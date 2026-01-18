@@ -1,0 +1,989 @@
+{
+  "name": "automated cold outreach skool jay",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9c83304b-ca21-4c65-adb6-9ec9b240918b",
+              "name": "skool keywords",
+              "value": "={{ $json.body.skoolKeywords.split(',').map(s => s.trim()).filter(s => s.length > 0) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -3504,
+        -208
+      ],
+      "id": "46ff38b0-5259-43dd-b2cf-41250c28d725",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "efc62d07-c4ce-429f-bcb4-59aa1b430c82",
+              "leftValue": "={{ $json.body.skoolKeywords }}",
+              "rightValue": "^https:\\/\\/www\\.skool\\.com\\/discovery\\?q=[^&]+$",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -3824,
+        -192
+      ],
+      "id": "b5977253-f5c2-4b9d-ae72-a636be368abc",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "operation": "Run actor and get dataset",
+        "actorSource": "store",
+        "actorId": {
+          "__rl": true,
+          "value": "zQGCiPzC5yS3mR9wI",
+          "mode": "list",
+          "cachedResultName": "Skool Email Scraper (scraper-mind/skool-email-scraper)",
+          "cachedResultUrl": "https://console.apify.com/actors/zQGCiPzC5yS3mR9wI/input"
+        },
+        "customBody": "={\n    \"keywords\": {{ $json['skool keywords'] }},\n    \"location\": \"\",\n    \"platform\": \"Skool\",\n    \"customDomains\": [\n        \"@gmail.com\"\n    ],\n    \"maxEmails\": 150,\n    \"engine\": \"cost-effective\"\n}",
+        "timeout": 3600
+      },
+      "type": "@apify/n8n-nodes-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        -3216,
+        -208
+      ],
+      "id": "fe29416f-c484-4d86-86ca-2d72f1453be2",
+      "name": "Run an Actor and get dataset",
+      "retryOnFail": true,
+      "credentials": {
+        "apifyApi": {
+          "id": "aKiissAMhPe4WNEQ",
+          "name": "Apify account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 15,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2976,
+        -208
+      ],
+      "id": "02943a78-e8c3-42c4-82d3-b7d4cff52ca8",
+      "name": "Loop Over Items",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "amount": 150
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -32,
+        -192
+      ],
+      "id": "79cc5cb9-315c-429a-9f03-f7e99dc58542",
+      "name": "Wait",
+      "webhookId": "4b222821-e1d1-4c57-8863-f4741de01091"
+    },
+    {
+      "parameters": {
+        "text": "={{ $json.output }}",
+        "attributes": {
+          "attributes": [
+            {
+              "name": "subject",
+              "description": "subject of the email",
+              "required": true
+            },
+            {
+              "name": "body",
+              "description": "body of the email",
+              "required": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.2,
+      "position": [
+        -1824,
+        -192
+      ],
+      "id": "25e42d7e-5466-4444-9611-86e70dc4d90f",
+      "name": "Information Extractor",
+      "alwaysOutputData": true,
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here's the summary {{ $json.answer }}",
+        "options": {
+          "systemMessage": "You receive a brief summary about a lead (may include a first name, interests, and fitness info).\n\nWrite an email subject and email body in a friendly, casual tone that follows this example structure:\n\nHey {{first_name}},\nAre you training consistently but not seeing the results you want?\nI help busy men build muscle, get lean, and feel stronger — even with work, life, and stress.\nIf you want, we can hop on a short call and see how I can help you hit your fitness goals faster.\nBook your call here:\nhttps://calendly.com/kornelvarga/1-1-coaching-discovery-call\n– Felix\n\nConditional greeting rule:\nIf a name is provided, address them by name (e.g., “Hey Fred,” “Hi Sarah,” etc.).\nIf no name is provided, start with a natural generic greeting (e.g., “Hey,” “Hi,” etc.) without a name.\n\nKeep in mind the coach’s niche: he coaches busy men (25–40) who want to build a strong, athletic physique while balancing work, life, and stress — without extreme dieting or spending hours in the gym.\n\nExplain how the coach can help them toward their fitness goals in a genuine, non‑pushy way, matching the tone and flow of the example template.\n\nAlways include the Calendly link inviting them to book a call:\nhttps://calendly.com/kornelvarga/1-1-coaching-discovery-call\n\nSign the email at the end exactly like this:\n– Felix\n\nOutput exactly in this format:\n\nSubject: <subject line>\nBody: <email body>\n\nKeep the email body to exactly 5 short lines, spaced with double new lines.\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -2192,
+        -192
+      ],
+      "id": "0505b9e3-8cff-4478-8de4-810449e341d6",
+      "name": "Write email",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false,
+          "ccList": "serpentspath11@gmail.com",
+          "senderName": "Jay"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -608,
+        -400
+      ],
+      "id": "df99f0a7-8f3b-446e-a51c-79bea322e7bc",
+      "name": "Email Sender",
+      "webhookId": "efe7ad3f-01c3-41eb-af9c-b59486ee4fb7",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "lo2CCWyCijvYBgmv",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json['email sender'] }}",
+                    "rightValue": "decloglabs@gmail.com",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "c170cb12-7757-4be6-b0d0-2e57504d515d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "decloglabs@gmail.com"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "db207b44-32e2-41b0-b9e9-a656ebf61384",
+                    "leftValue": "={{ $json['email sender'] }}",
+                    "rightValue": "Lucas.premat@gmail.com",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Lucas.premat@gmail.com"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "a2e1a641-8223-4114-ad65-820da1d00678",
+                    "leftValue": "={{ $json['email sender'] }}",
+                    "rightValue": "vault2451@gmail.com",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "vault2451@gmail.com"
+            }
+          ]
+        },
+        "options": {
+          "allMatchingOutputs": true
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1280,
+        -208
+      ],
+      "id": "66e6c24a-90ab-4354-8f8c-3e0f3123ba6e",
+      "name": "Switch1"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false,
+          "ccList": "serpentspath11@gmail.com",
+          "senderName": "Jay"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -608,
+        -192
+      ],
+      "id": "21b266cc-b1fb-4c35-b39f-6d818a3a1fa9",
+      "name": "Send a message",
+      "webhookId": "934e2971-7609-4318-91b0-45c9d1e48e9c",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "StKNHM65h7bWM7xc",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.body }}",
+        "options": {
+          "appendAttribution": false,
+          "ccList": "serpentspath11@gmail.com",
+          "senderName": "Jay"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -608,
+        0
+      ],
+      "id": "1055d582-18e1-4daf-94ba-e55968bf03bd",
+      "name": "Send a message1",
+      "webhookId": "625d0a46-522e-4b76-98cf-cb3ededf9ece",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "xQXWarb3xpOzT5sV",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6b8f4e7b-1302-436f-a28c-b9cf33a77c0f",
+              "name": "subject",
+              "value": "={{ $('Information Extractor').item.json.output.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "846fc789-bfe8-4963-9db3-a998081cd6b5",
+              "name": "=body",
+              "value": "={{ $('Information Extractor').item.json.output.body }}",
+              "type": "string"
+            },
+            {
+              "id": "0f83c6fd-f35e-4280-b8a0-e93f4c1d8449",
+              "name": "email",
+              "value": "={{ $('Loop Over Items').item.json.email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -944,
+        -192
+      ],
+      "id": "262d27bb-a934-4024-ae63-d9ce110efbbb",
+      "name": "Edit Fields4"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6b8f4e7b-1302-436f-a28c-b9cf33a77c0f",
+              "name": "subject",
+              "value": "={{ $('Information Extractor').item.json.output.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "846fc789-bfe8-4963-9db3-a998081cd6b5",
+              "name": "body",
+              "value": "={{ $('Information Extractor').item.json.output.body }}",
+              "type": "string"
+            },
+            {
+              "id": "37db99fe-308b-4727-9414-a1d362e614fa",
+              "name": "email",
+              "value": "={{ $('Loop Over Items').item.json.email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -944,
+        0
+      ],
+      "id": "c58d504e-0653-4d35-a09b-57d917343de9",
+      "name": "Edit Fields5"
+    },
+    {
+      "parameters": {
+        "numberInputs": 3
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -224,
+        -208
+      ],
+      "id": "906188ce-569f-4c7f-8338-b9345e1aa57e",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "model": "openai/chatgpt-4o-latest",
+        "options": {
+          "maxTokens": -1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        256,
+        736
+      ],
+      "id": "1e8533d5-a42e-4b9c-acb7-1cd9880a2611",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "xUweSyQHc1BTXKnb",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "=Find information about this person. link to their skool profile is {{ $json.url }}. Look for recent things about them",
+        "options": {
+          "topic": "general",
+          "search_depth": "basic",
+          "max_results": 7,
+          "include_answer": "advanced"
+        }
+      },
+      "type": "@tavily/n8n-nodes-tavily.tavily",
+      "typeVersion": 1,
+      "position": [
+        -2560,
+        -192
+      ],
+      "id": "648c16f7-c990-44ed-9934-f0577bcb8a7e",
+      "name": "Search1",
+      "executeOnce": false,
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "tavilyApi": {
+          "id": "FHLbrPiWp20f3MWb",
+          "name": "Tavily account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d55bcad5-452e-46d0-84ca-2de747ef22df",
+              "name": "email sender",
+              "value": "={{ ['decloglabs@gmail.com', 'Lucas.premat@gmail.com', 'vault2451@gmail.com'].randomItem() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1472,
+        -192
+      ],
+      "id": "56992bb6-2e34-4380-8ba4-ed6fa1ec5c6b",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6b8f4e7b-1302-436f-a28c-b9cf33a77c0f",
+              "name": "subject",
+              "value": "={{ $('Information Extractor').item.json.output.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "846fc789-bfe8-4963-9db3-a998081cd6b5",
+              "name": "body",
+              "value": "={{ $('Information Extractor').item.json.output.body }}",
+              "type": "string"
+            },
+            {
+              "id": "140f81dc-99ac-4ec9-926d-8e2678862765",
+              "name": "email",
+              "value": "={{ $('Loop Over Items').item.json.email }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -944,
+        -400
+      ],
+      "id": "09c20da3-06b8-4b5c-b533-bcf924c499d1",
+      "name": "Edit Fields6"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3b0d2a4a-2acc-44d5-92bb-9557e2ddc6e5",
+              "name": "Account",
+              "value": "={{ $('Loop Over Items').item.json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "68c84665-1add-40cd-a3eb-5ad6f35c09fb",
+              "name": "Email Address",
+              "value": "={{ $('Loop Over Items').item.json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "e1cffd4d-7a6b-4525-926a-7eefbb631987",
+              "name": "Biography",
+              "value": "={{ $('Loop Over Items').item.json.description }}",
+              "type": "string"
+            },
+            {
+              "id": "9f569698-6b5e-4443-a4b7-b05e4b291e66",
+              "name": "Subject of Email",
+              "value": "={{ $('Information Extractor').item.json.output.subject }}",
+              "type": "string"
+            },
+            {
+              "id": "77fe9afd-3c7a-4ed0-9894-04b24e0ae590",
+              "name": "Body of Email",
+              "value": "={{ $('Information Extractor').item.json.output.body }}",
+              "type": "string"
+            },
+            {
+              "id": "3c8d8a4e-7bc9-4b2b-9cee-b237fdb939d6",
+              "name": "Status",
+              "value": "={{ $json.labelIds[1] }}",
+              "type": "string"
+            },
+            {
+              "id": "401742be-34ba-4978-9d1a-3a324acbd3a6",
+              "name": "Email Sender",
+              "value": "={{ $('Edit Fields3').item.json['email sender'] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        384,
+        128
+      ],
+      "id": "3759bde1-0b11-450c-b646-ced40c0e532a",
+      "name": "Edit Fields7"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "c4a1df72-e855-4f79-a5e1-b914bf88014f",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -4032,
+        -192
+      ],
+      "id": "edca4710-8304-41f1-8042-a7fa0e52762e",
+      "name": "Webhook",
+      "webhookId": "c4a1df72-e855-4f79-a5e1-b914bf88014f"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1n1RNzw-FT0hkGuy_7V4EGbs_7Ykgqnuc5HFAczslSEo",
+          "mode": "list",
+          "cachedResultName": "Outreach data skool Jay",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1n1RNzw-FT0hkGuy_7V4EGbs_7Ykgqnuc5HFAczslSEo/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Blad1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cwrGQQMlNUbtW0iumyLgkVkDFdlpx8qA0yX2FWJjnRc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Account": "={{ $json.Account }}",
+            "Email Adress": "={{ $json['Email Sender'] }}",
+            "Biography": "={{ $json.Biography }}",
+            "Subject of Email": "={{ $json['Subject of Email'] }}",
+            "Body of Email": "={{ $json['Body of Email'] }}",
+            "Status": "={{ $json.Status }}",
+            "Email Sender": "={{ $json['Email Sender'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Account",
+              "displayName": "Account",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Adress",
+              "displayName": "Email Adress",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Biography",
+              "displayName": "Biography",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Subject of Email",
+              "displayName": "Subject of Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Body of Email",
+              "displayName": "Body of Email",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Sender",
+              "displayName": "Email Sender",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -2592,
+        -416
+      ],
+      "id": "6f4e912e-0eaf-49f3-8033-cc5e74382a16",
+      "name": "Add data to skool sheet1",
+      "retryOnFail": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "twyhvKjDcfNqYilX",
+          "name": "Google Sheets account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Run an Actor and get dataset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run an Actor and get dataset": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Add data to skool sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write email": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email Sender": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields6",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Send a message1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields5": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Write email",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search1": {
+      "main": [
+        [
+          {
+            "node": "Write email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Switch1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields6": {
+      "main": [
+        [
+          {
+            "node": "Email Sender",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields7": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2d2dd359-1319-4401-ba6a-1bb87cf7b7d6",
+  "meta": {
+    "instanceId": "72830bf432026c6e2413b0d51581a1166b5a9283b21862c2057ffdeb236dd2bf"
+  },
+  "id": "pLNCJ3s01tifQmKl",
+  "tags": []
+}
